@@ -1,7 +1,7 @@
 # CS7641-Randomized-Optimization
 
 ## Source Code
-- A1.py
+- A2.py
 - [Repo](https://github.com/brackeneddy/CS7641-Randomized-Optimization)
 
 ## Instructions
