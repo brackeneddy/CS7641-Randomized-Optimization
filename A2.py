@@ -51,7 +51,7 @@ fitness_cont_peaks = {"RHC": [], "SA": [], "GA": [], "MIMIC": []}
 def solve_problem(problem, use_mimic=False):
     start_time = time.time()
     best_state_rhc, best_fitness_rhc, rhc_curve = mlrose.random_hill_climb(
-        problem, max_attempts=100, max_iters=1000, restarts=10, curve=True
+        problem, max_attempts=100, max_iters=500, restarts=10, curve=True
     )
     rhc_time = time.time() - start_time
 
@@ -60,7 +60,7 @@ def solve_problem(problem, use_mimic=False):
         problem,
         schedule=mlrose.GeomDecay(),
         max_attempts=100,
-        max_iters=1000,
+        max_iters=500,
         curve=True,
     )
     sa_time = time.time() - start_time
@@ -71,7 +71,7 @@ def solve_problem(problem, use_mimic=False):
         pop_size=200,
         mutation_prob=0.1,
         max_attempts=100,
-        max_iters=1000,
+        max_iters=500,
         curve=True,
     )
     ga_time = time.time() - start_time
@@ -83,7 +83,7 @@ def solve_problem(problem, use_mimic=False):
             pop_size=200,
             keep_pct=0.2,
             max_attempts=100,
-            max_iters=1000,
+            max_iters=500,
             curve=True,
         )
         mimic_time = time.time() - start_time
@@ -167,7 +167,7 @@ def custom_fitness_function(weights):
     input_to_hidden_weights = weights[: num_features * num_hidden_nodes].reshape(
         (num_features, num_hidden_nodes)
     )
-    hidden_to_output_weights = weights[num_features * num_hidden_nodes :].reshape(
+    hidden_to_output_weights = weights[num_features * num_hidden_nodes:].reshape(
         (num_hidden_nodes, num_output_nodes)
     )
 
@@ -196,32 +196,46 @@ problem_nn = mlrose.ContinuousOpt(
 
 # Function to solve the neural network weight optimization problem using different algorithms
 def solve_nn_problem(problem, algorithm_name):
-    if algorithm_name == "RHC":
-        best_state, best_fitness, curve = mlrose.random_hill_climb(
-            problem, max_attempts=200, max_iters=2000, restarts=20, curve=True
-        )
-    elif algorithm_name == "SA":
-        best_state, best_fitness, curve = mlrose.simulated_annealing(
-            problem,
-            schedule=mlrose.GeomDecay(),
-            max_attempts=200,
-            max_iters=2000,
-            curve=True,
-        )
-    elif algorithm_name == "GA":
-        best_state, best_fitness, curve = mlrose.genetic_alg(
-            problem,
-            pop_size=300,
-            mutation_prob=0.2,
-            max_attempts=200,
-            max_iters=2000,
-            curve=True,
-        )
+    seeds = np.random.randint(1, 101, size=10)
+    results = []
+    curves = []
+    for seed in seeds:
+        np.random.seed(seed)
+        if algorithm_name == "RHC":
+            best_state, best_fitness, curve = mlrose.random_hill_climb(
+                problem, max_attempts=100, max_iters=500, restarts=20, curve=True
+            )
+        elif algorithm_name == "SA":
+            best_state, best_fitness, curve = mlrose.simulated_annealing(
+                problem,
+                schedule=mlrose.GeomDecay(),
+                max_attempts=100,
+                max_iters=500,
+                curve=True,
+            )
+        elif algorithm_name == "GA":
+            best_state, best_fitness, curve = mlrose.genetic_alg(
+                problem,
+                pop_size=300,
+                mutation_prob=0.2,
+                max_attempts=100,
+                max_iters=500,
+                curve=True,
+            )
+        results.append(best_fitness)
+        curves.append(curve)
+
+    avg_fitness = np.mean(results)
+
+    # Ensuring all curves have the same length by padding with the last value
+    max_len = max(len(curve) for curve in curves)
+    padded_curves = [np.pad(curve[:, 0], (0, max_len - len(curve)), 'edge') for curve in curves]
+    avg_curve = np.mean(padded_curves, axis=0)
 
     print(
-        f"Neural Network Weight Optimization - {algorithm_name}: Best fitness: {best_fitness}"
+        f"Neural Network Weight Optimization - {algorithm_name}: Avg fitness: {avg_fitness}"
     )
-    return best_state, best_fitness, curve
+    return best_state, avg_fitness, avg_curve
 
 
 # Solve the neural network weight optimization problem using different algorithms
@@ -234,7 +248,7 @@ nn_ga_state, nn_ga_fitness, nn_ga_curve = solve_nn_problem(problem_nn, "GA")
 def plot_fitness_iterations(curves, title, algorithms, colors):
     plt.figure(figsize=(10, 6))
     for curve, algo, color in zip(curves, algorithms, colors):
-        plt.plot(range(len(curve)), curve[:, 0], label=algo, color=color)
+        plt.plot(range(len(curve)), curve, label=algo, color=color)
     plt.title(title)
     plt.xlabel("Iterations")
     plt.ylabel("Fitness")
@@ -432,7 +446,7 @@ def custom_fitness_function_tuned(weights):
     input_to_hidden_weights = weights[: num_features * num_hidden_nodes].reshape(
         (num_features, num_hidden_nodes)
     )
-    hidden_to_output_weights = weights[num_features * num_hidden_nodes :].reshape(
+    hidden_to_output_weights = weights[num_features * num_hidden_nodes:].reshape(
         (num_hidden_nodes, num_output_nodes)
     )
 
